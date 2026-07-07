@@ -1,24 +1,214 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Jogo Three.js</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jogo da Torre</title>
     <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
+        /* Reset e estilo base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #1a1a2e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* --- Interface (HUD) --- */
+        #hud {
+            position: fixed;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            pointer-events: none;
+            z-index: 10;
+            padding: 0 20px;
+        }
+
+        #score-box {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            padding: 10px 28px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            font-size: 1.4rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #score-box span {
+            color: #facc15;
+            font-size: 1.8rem;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        /* --- Tela de Game Over --- */
+        #game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            flex-direction: column;
+            animation: fadeIn 0.5s ease;
+        }
+
+        #game-over.show {
+            display: flex;
+        }
+
+        #game-over-content {
+            background: rgba(30, 30, 60, 0.9);
+            padding: 40px 50px;
+            border-radius: 24px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+            max-width: 420px;
+            width: 90%;
+        }
+
+        #game-over-content h1 {
+            color: #ff6b6b;
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: 2px;
+        }
+
+        #game-over-content .sub {
+            color: #aaa;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        #game-over-content .final-score {
+            color: #fff;
+            font-size: 1.2rem;
+            margin-bottom: 28px;
+        }
+
+        #game-over-content .final-score span {
+            color: #facc15;
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+
+        #restart-btn {
+            background: #facc15;
+            color: #1a1a2e;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.2s;
+            box-shadow: 0 8px 0 #b48b0e;
+            pointer-events: auto;
+        }
+
+        #restart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 0 #b48b0e;
+        }
+
+        #restart-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 2px 0 #b48b0e;
+        }
+
+        /* --- Animações --- */
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* --- Responsivo --- */
+        @media (max-width: 600px) {
+            #score-box {
+                font-size: 1rem;
+                padding: 6px 18px;
+            }
+            #score-box span {
+                font-size: 1.4rem;
+                min-width: 30px;
+            }
+            #game-over-content {
+                padding: 28px 20px;
+            }
+            #game-over-content h1 {
+                font-size: 2.2rem;
+            }
+            #restart-btn {
+                padding: 12px 28px;
+                font-size: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
+
+    <!-- Placar -->
+    <div id="hud">
+        <div id="score-box">
+            <span id="score-display">0</span>
+        </div>
+    </div>
+
+    <!-- Tela de Game Over -->
+    <div id="game-over">
+        <div id="game-over-content">
+            <h1>Perdeu Beta</h1>
+            <p class="sub">Você quebrou a torre!</p>
+            <div class="final-score">
+                Pontuação final<br />
+                <span id="final-score">0</span>
+            </div>
+            <button id="restart-btn">Jogar novamente</button>
+        </div>
+    </div>
+
+    <!-- Import Map -->
     <script type="importmap">
         {
-          "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
-          }
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            }
         }
-      </script>
-      
-      <script type="module" src="main.js"></script>
+    </script>
+
+    <!-- Script principal -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>
