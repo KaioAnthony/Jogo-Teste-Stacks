@@ -1,4 +1,4 @@
-# Jogo-Teste
+# Jogo-Teste-Stacks
 
-### Clique para começar o jogo
-### Recarregue o jogo para começar novamente
+### O seu Objetivo é empilhar caixas perfeitamente, porém se errar um milimetro a caixa acabara diminuindo aos poucos... Ao menos se você acertar perfeitamente obvio
+
