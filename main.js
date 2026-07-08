@@ -19,7 +19,6 @@ const originalBoxSize = 3;
 const grupoPilha = 1;
 const grupoFantasma = 2;
 
-// --- Inicialização ---
 init();
 
 function init() {
@@ -277,11 +276,10 @@ function playSound(type) {
     gain.connect(ctx.destination);
 
     if (type === 'perfect') {
-        // Som agudo de acerto perfeito (sobe de tom rapidamente)
         const now = ctx.currentTime;
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, now); // Nota C5
-        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.15); // Nota C6
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.15);
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
         osc.start(now);
@@ -424,7 +422,7 @@ document.getElementById("startBtn").addEventListener("click", (event) => {
     
     const musica = document.getElementById("musicaFundo");
     if (musica) {
-        musica.volume = 0.35; // Define o volume em 15% para não estourar o ouvido e não abafar os efeitos sonoros dos blocos
+        musica.volume = 0.35;
         musica.play().catch(error => {
             console.log("O navegador bloqueou o autoplay de áudio:", error);
         });
