@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
-// --- Variáveis Globais ---
+// Variáveis Globais
 let camera, scene, renderer;
 let world;
 let gameStarted = false;
@@ -16,7 +16,7 @@ const originalBoxSize = 3;
 const grupoPilha = 1;
 const grupoFantasma = 2;
 
-// --- Inicialização ---
+// Inicialização 
 init();
 
 function init() {
@@ -28,7 +28,7 @@ function init() {
     scene = new THREE.Scene(); 
 
     addLayer(0, 0, originalBoxSize, originalBoxSize, "x", false);
-    addLayer(-12, 0, originalBoxSize, originalBoxSize, "x", true); // Começa em -12 para o PC
+    addLayer(-12, 0, originalBoxSize, originalBoxSize, "x", true); //
 
     const luzAmbiente = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(luzAmbiente);
@@ -180,32 +180,28 @@ function animation() {
     const speed = 0.15;
     const topLayer = stack[stack.length - 1];
     const previousLayer = stack[stack.length - 2];
-    const direction = topLayer.direction; // Eixo atual (pode ser "x" ou "z")
+    const direction = topLayer.direction; 
     
-    // Move o bloco sempre para a frente no eixo atual
+   
     topLayer.threejs.position[direction] += speed * moveDirection;
     topLayer.cannonjs.position[direction] += speed * moveDirection;
 
-    // Se o bloco sair completamente da tela (passar de 12)
     if (topLayer.threejs.position[direction] > 12) {
         const contraDirecao = direction === "x" ? "z" : "x";
         
-        // 1. Mantém o bloco perfeitamente alinhado com o de baixo no eixo estático
+       
         topLayer.threejs.position[contraDirecao] = previousLayer.threejs.position[contraDirecao];
         topLayer.cannonjs.position[contraDirecao] = previousLayer.threejs.position[contraDirecao];
 
-        // 2. Faz o bloco dar "respawn" lá atrás (-12) no MESMO eixo (X continua X, Z continua Z)
         topLayer.threejs.position[direction] = -12;
         topLayer.cannonjs.position[direction] = -12;
         
-        // 3. Reseta a velocidade física do Cannon.js para evitar que ele trave ou mude de direção sozinho
         topLayer.cannonjs.velocity.set(0, 0, 0);
         topLayer.cannonjs.angularVelocity.set(0, 0, 0);
         
         moveDirection = 1; 
     }
 
-    // Movimentação suave da câmera acompanhando a subida do cenário
     if (camera.position.y < boxHeight * (stack.length - 2) + 4) {
         camera.position.y += speed;
     }
@@ -308,14 +304,13 @@ window.addEventListener("click", (event) => {
 
         playSound('perfect');
 
-        // Alterna o eixo do PRÓXIMO bloco que vai nascer
         const nextDirection = direction === "x" ? "z" : "x";
         
         const nextX = nextDirection === "x" ? -12 : topLayer.threejs.position.x;
         const nextZ = nextDirection === "z" ? -12 : topLayer.threejs.position.z;
 
         addLayer(nextX, nextZ, topLayer.width, topLayer.depth, nextDirection, true);
-        moveDirection = 1; // Reseta para mover para frente
+        moveDirection = 1;
 
         score++; 
         document.getElementById("score").innerText = "Score: " + score;
@@ -337,14 +332,14 @@ window.addEventListener("click", (event) => {
 
             addOverhang(overhangX, overhangZ, overhangWidth, overhangDepth);
 
-            // Alterna o eixo do PRÓXIMO bloco que vai nascer
+        
             const nextDirection = direction === "x" ? "z" : "x";
             
             const nextX = nextDirection === "x" ? -12 : topLayer.threejs.position.x;
             const nextZ = nextDirection === "z" ? -12 : topLayer.threejs.position.z;
 
             addLayer(nextX, nextZ, topLayer.width, topLayer.depth, nextDirection, true);
-            moveDirection = 1; // Reseta para mover para frente
+            moveDirection = 1; 
 
             score++; 
             document.getElementById("score").innerText = "Score: " + score;
