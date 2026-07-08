@@ -9,9 +9,6 @@ let moveDirection = 1;
 let score = 0;
 let recorde = localStorage.getItem("stack_recorde") ? parseInt(localStorage.getItem("stack_recorde")) : 0;
 let perfectStreak = 0;
-let sizeBonus = 0; 
-let audioCtxBackground = null;
-let musicInterval = null;
 const stack = [];
 const overhangs = [];
 const boxHeight = 1;
@@ -19,6 +16,7 @@ const originalBoxSize = 3;
 const grupoPilha = 1;
 const grupoFantasma = 2;
 
+// --- Inicialização ---
 init();
 
 function init() {
@@ -30,7 +28,7 @@ function init() {
     scene = new THREE.Scene(); 
 
     addLayer(0, 0, originalBoxSize, originalBoxSize, "x", false);
-    addLayer(-10, 0, originalBoxSize, originalBoxSize, "x", true);
+    addLayer(-12, 0, originalBoxSize, originalBoxSize, "x", true); // Começa em -12 para o PC
 
     const luzAmbiente = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(luzAmbiente);
@@ -44,7 +42,6 @@ function init() {
     luzDirecional.shadow.camera.near = 0.5;
     luzDirecional.shadow.camera.far = 100;
     
-    
     const d = 10;
     luzDirecional.shadow.camera.left = -d;
     luzDirecional.shadow.camera.right = d;
@@ -53,14 +50,15 @@ function init() {
     
     scene.add(luzDirecional);
 
-    const width = 10;
-    const height = width * (window.innerHeight / window.innerWidth);
+    const baseWidth = 10;
+    const aspect = window.innerWidth / window.innerHeight;
+    const frustumHeight = baseWidth / aspect;
     
     camera = new THREE.OrthographicCamera(
-        width / -2,  
-        width / 2,   
-        height / 2,  
-        height / -2, 
+        baseWidth / -2,  
+        baseWidth / 2,   
+        frustumHeight / 2,  
+        frustumHeight / -2, 
         1,           
         100          
     );
@@ -69,9 +67,9 @@ function init() {
 
     document.getElementById("recordeText").innerText = "Recorde: " + recorde;
 
-    
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
     renderer.shadowMap.enabled = true; 
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
     document.body.appendChild(renderer.domElement);
@@ -94,45 +92,7 @@ function addOverhang(x, z, width, depth, customY = null) {
     overhangs.push(overhang);
 }
 
-function createRoundedBoxGeometry(width, depth) {
-    const radius = 0.15; 
-    const shape2D = new THREE.Shape();
-    
-    const w = width / 2;
-    const d = depth / 2;
-    shape2D.moveTo(-w + radius, -d);
-    shape2D.lineTo(w - radius, -d);
-    shape2D.quadraticCurveTo(w, -d, w, -d + radius);
-    shape2D.lineTo(w, d - radius);
-    shape2D.quadraticCurveTo(w, d, w - radius, d);
-    shape2D.lineTo(-w + radius, d);
-    shape2D.quadraticCurveTo(-w, d, -w, d - radius);
-    shape2D.lineTo(-w, -d + radius);
-    shape2D.quadraticCurveTo(-w, -d, -w + radius, -d);
-
-    const extrudeSettings = {
-        depth: boxHeight - 0.1, 
-        bevelEnabled: true,
-        bevelThickness: 0.05,   
-        bevelSize: 0.05,        
-        bevelSegments: 4,       
-        curveSegments: 8        
-    };
-
-    const geometry = new THREE.ExtrudeGeometry(shape2D, extrudeSettings);
-    geometry.center();
-    return geometry;
-}
-
 function generateBox(x, y, z, width, depth, falls, direction) {
-    if (!falls && sizeBonus > 0) {
-        if (direction === "x") {
-            width += sizeBonus;
-        } else if (direction === "z") {
-            depth += sizeBonus;
-        }
-    }
-
     const geometry = new THREE.BoxGeometry(width, boxHeight, depth);
 
     const hue = (30 + stack.length * 12) % 360; 
@@ -159,7 +119,6 @@ function generateBox(x, y, z, width, depth, falls, direction) {
     outlineMesh.scale.set(1.03, 1.03, 1.03); 
     outlineMesh.name = "cartoonOutline"; 
     mesh.add(outlineMesh); 
-    
 
     const shape = new CANNON.Box(
         new CANNON.Vec3(width / 2, boxHeight / 2, depth / 2)
@@ -167,7 +126,6 @@ function generateBox(x, y, z, width, depth, falls, direction) {
     let mass = falls ? 5 : 0;
     const body = new CANNON.Body({ mass, shape });
     body.position.set(x, y, z);
-
 
     if (falls) {
         body.collisionFilterGroup = grupoFantasma;
@@ -213,7 +171,6 @@ function cutBox(topLayer, overlap, size, delta) {
     );
     topLayer.cannonjs.shapes = [];
     topLayer.cannonjs.addShape(shape);
-
     
     topLayer.cannonjs.collisionFilterGroup = grupoPilha;
     topLayer.cannonjs.collisionFilterMask = grupoPilha;
@@ -222,23 +179,33 @@ function cutBox(topLayer, overlap, size, delta) {
 function animation() {
     const speed = 0.15;
     const topLayer = stack[stack.length - 1];
-    const direction = topLayer.direction;
+    const previousLayer = stack[stack.length - 2];
+    const direction = topLayer.direction; // Eixo atual (pode ser "x" ou "z")
     
+    // Move o bloco sempre para a frente no eixo atual
     topLayer.threejs.position[direction] += speed * moveDirection;
     topLayer.cannonjs.position[direction] += speed * moveDirection;
 
-    if (topLayer.threejs.position[direction] > 10 || topLayer.threejs.position[direction] < -10) {
-        topLayer.threejs.position[direction] = 0;
-        topLayer.cannonjs.position[direction] = 0;
+    // Se o bloco sair completamente da tela (passar de 12)
+    if (topLayer.threejs.position[direction] > 12) {
+        const contraDirecao = direction === "x" ? "z" : "x";
+        
+        // 1. Mantém o bloco perfeitamente alinhado com o de baixo no eixo estático
+        topLayer.threejs.position[contraDirecao] = previousLayer.threejs.position[contraDirecao];
+        topLayer.cannonjs.position[contraDirecao] = previousLayer.threejs.position[contraDirecao];
 
-        const newDirection = direction === "x" ? "z" : "x";
-        topLayer.direction = newDirection;
-
-        topLayer.threejs.position[newDirection] = -10;
-        topLayer.cannonjs.position[newDirection] = -10;
+        // 2. Faz o bloco dar "respawn" lá atrás (-12) no MESMO eixo (X continua X, Z continua Z)
+        topLayer.threejs.position[direction] = -12;
+        topLayer.cannonjs.position[direction] = -12;
+        
+        // 3. Reseta a velocidade física do Cannon.js para evitar que ele trave ou mude de direção sozinho
+        topLayer.cannonjs.velocity.set(0, 0, 0);
+        topLayer.cannonjs.angularVelocity.set(0, 0, 0);
+        
         moveDirection = 1; 
     }
 
+    // Movimentação suave da câmera acompanhando a subida do cenário
     if (camera.position.y < boxHeight * (stack.length - 2) + 4) {
         camera.position.y += speed;
     }
@@ -252,9 +219,14 @@ function gameOverAnimation() {
     renderer.render(scene, camera);
 
     const lastOverhang = overhangs[overhangs.length - 1];
-    if (lastOverhang && lastOverhang.threejs.position.y < -15) {
+    if (!lastOverhang || lastOverhang.threejs.position.y < -15) {
         renderer.setAnimationLoop(null); 
-        document.getElementById("restartBtn").style.display = "block";
+        
+        document.getElementById("finalScore").innerText = "Pontuação: " + score;
+        document.getElementById("finalRecorde").innerText = "Recorde: " + recorde;
+        
+        document.getElementById("score").style.display = "none";
+        document.getElementById("telaGameOver").style.display = "flex";
     }
 }
 
@@ -275,43 +247,39 @@ function playSound(type) {
     osc.connect(gain);
     gain.connect(ctx.destination);
 
+    const now = ctx.currentTime;
+
     if (type === 'perfect') {
-        const now = ctx.currentTime;
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, now);
-        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.15);
+        osc.frequency.setValueAtTime(523.25, now); 
+        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.15); 
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
         osc.start(now);
         osc.stop(now + 0.15);
-    } else if (type === 'growth') {
-        
-        const now = ctx.currentTime;
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.linearRampToValueAtTime(800, now + 0.3);
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    } else if (type === 'cut') {
+        osc.type = 'sine'; 
+        osc.frequency.setValueAtTime(330, now); 
+        osc.frequency.exponentialRampToValueAtTime(220, now + 0.1); 
+        gain.gain.setValueAtTime(0.25, now); 
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(now);
-        osc.stop(now + 0.3);
+        osc.stop(now + 0.1);
     }
 }
 
 function triggerPerfectVisualEffect(colorHex) {
     const flash = document.getElementById("perfectFlash");
-    flash.style.backgroundColor = colorHex;
-    flash.style.opacity = "0.3"; 
-    
-   
-    setTimeout(() => {
-        flash.style.opacity = "0";
-    }, 100);
+    if (flash) {
+        flash.style.backgroundColor = colorHex;
+        flash.style.opacity = "0.3"; 
+        setTimeout(() => {
+            flash.style.opacity = "0";
+        }, 100);
+    }
 }
 
-
-
 window.addEventListener("click", (event) => {
-
     if (event.target.id === "restartBtn" || event.target.id === "startBtn") {
         return;
     }
@@ -331,83 +299,78 @@ window.addEventListener("click", (event) => {
     const margemPerfeita = 0.1;
 
     if (overhangSize <= margemPerfeita) {
-
         perfectStreak++;
+        topLayer.threejs.position[direction] = previousLayer.threejs.position[direction];
+        topLayer.cannonjs.position[direction] = previousLayer.threejs.position[direction];
+
+        const currentHex = "#" + topLayer.threejs.material.color.getHexString();
+        triggerPerfectVisualEffect(currentHex);
+
+        playSound('perfect');
+
+        // Alterna o eixo do PRÓXIMO bloco que vai nascer
+        const nextDirection = direction === "x" ? "z" : "x";
+        
+        const nextX = nextDirection === "x" ? -12 : topLayer.threejs.position.x;
+        const nextZ = nextDirection === "z" ? -12 : topLayer.threejs.position.z;
+
+        addLayer(nextX, nextZ, topLayer.width, topLayer.depth, nextDirection, true);
+        moveDirection = 1; // Reseta para mover para frente
+
+        score++; 
+        document.getElementById("score").innerText = "Score: " + score;
+
+    } else {
+        perfectStreak = 0;
+
+        const overlap = size - overhangSize;
+
+        if (overlap > 0) {
+            cutBox(topLayer, overlap, size, delta);
+            playSound('cut'); 
             
-            topLayer.threejs.position[direction] = previousLayer.threejs.position[direction];
-            topLayer.cannonjs.position[direction] = previousLayer.threejs.position[direction];
+            const overhangShift = (overlap / 2 + overhangSize / 2) * Math.sign(delta);
+            const overhangX = direction === "x" ? topLayer.threejs.position.x + overhangShift : topLayer.threejs.position.x;
+            const overhangZ = direction === "z" ? topLayer.threejs.position.z + overhangShift : topLayer.threejs.position.z;
+            const overhangWidth = direction === "x" ? overhangSize : topLayer.width;
+            const overhangDepth = direction === "z" ? overhangSize : topLayer.depth;
 
-            const currentHex = "#" + topLayer.threejs.material.color.getHexString();
-            triggerPerfectVisualEffect(currentHex);
+            addOverhang(overhangX, overhangZ, overhangWidth, overhangDepth);
 
-            if (perfectStreak >= 3) {
-                sizeBonus += 0.25; 
-                playSound('growth'); 
-                console.log("Combo de 3! O bloco está crescendo!");
-            } else {
-                playSound('perfect');
-            }
-
+            // Alterna o eixo do PRÓXIMO bloco que vai nascer
             const nextDirection = direction === "x" ? "z" : "x";
-            const nextX = nextDirection === "x" ? -10 : topLayer.threejs.position.x;
-            const nextZ = nextDirection === "z" ? -10 : topLayer.threejs.position.z;
+            
+            const nextX = nextDirection === "x" ? -12 : topLayer.threejs.position.x;
+            const nextZ = nextDirection === "z" ? -12 : topLayer.threejs.position.z;
 
             addLayer(nextX, nextZ, topLayer.width, topLayer.depth, nextDirection, true);
-            moveDirection = 1;
+            moveDirection = 1; // Reseta para mover para frente
 
             score++; 
             document.getElementById("score").innerText = "Score: " + score;
-
         } else {
-            perfectStreak = 0;
-            sizeBonus = 0;
+            gameStarted = false; 
 
-            const overlap = size - overhangSize;
-
-            if (overlap > 0) {
-                cutBox(topLayer, overlap, size, delta);
-                
-                const overhangShift = (overlap / 2 + overhangSize / 2) * Math.sign(delta);
-                const overhangX = direction === "x" ? topLayer.threejs.position.x + overhangShift : topLayer.threejs.position.x;
-                const overhangZ = direction === "z" ? topLayer.threejs.position.z + overhangShift : topLayer.threejs.position.z;
-                const overhangWidth = direction === "x" ? overhangSize : topLayer.width;
-                const overhangDepth = direction === "z" ? overhangSize : topLayer.depth;
-
-                addOverhang(overhangX, overhangZ, overhangWidth, overhangDepth);
-
-                const nextDirection = direction === "x" ? "z" : "x";
-                const nextX = nextDirection === "x" ? -10 : topLayer.threejs.position.x;
-                const nextZ = nextDirection === "z" ? -10 : topLayer.threejs.position.z;
-
-                addLayer(nextX, nextZ, topLayer.width, topLayer.depth, nextDirection, true);
-                moveDirection = 1;
-
-                score++; 
-                document.getElementById("score").innerText = "Score: " + score;
-            } else {
-                console.log("Game Over! Você errou o bloco.");
-                gameStarted = false; 
-
-                if (score > recorde) {
-                    recorde = score;
-                    localStorage.setItem("stack_recorde", recorde);
-                }
-
-                const overhangX = topLayer.threejs.position.x;
-                const overhangZ = topLayer.threejs.position.z;
-                const currentY = topLayer.threejs.position.y; 
-
-                scene.remove(topLayer.threejs);
-                if (topLayer.cannonjs) world.removeBody(topLayer.cannonjs);
-
-                addOverhang(overhangX, overhangZ, topLayer.width, topLayer.depth, currentY);
-                
-                stack.pop();
-                renderer.setAnimationLoop(gameOverAnimation);
+            if (score > recorde) {
+                recorde = score;
+                localStorage.setItem("stack_recorde", recorde);
             }
+
+            const overhangX = topLayer.threejs.position.x;
+            const overhangZ = topLayer.threejs.position.z;
+            const currentY = topLayer.threejs.position.y; 
+
+            scene.remove(topLayer.threejs);
+            if (topLayer.cannonjs) world.removeBody(topLayer.cannonjs);
+
+            addOverhang(overhangX, overhangZ, topLayer.width, topLayer.depth, currentY);
+            
+            stack.pop();
+
+            renderer.setAnimationLoop(gameOverAnimation);
         }
     }
-);
+});
 
 document.getElementById("restartBtn").addEventListener("click", (event) => {
     event.stopPropagation();
@@ -422,7 +385,7 @@ document.getElementById("startBtn").addEventListener("click", (event) => {
     
     const musica = document.getElementById("musicaFundo");
     if (musica) {
-        musica.volume = 0.35;
+        musica.volume = 0.35; 
         musica.play().catch(error => {
             console.log("O navegador bloqueou o autoplay de áudio:", error);
         });
@@ -433,11 +396,9 @@ document.getElementById("startBtn").addEventListener("click", (event) => {
 });
 
 function restartGame() {
-    document.getElementById("restartBtn").style.display = "none";
-    
+    document.getElementById("telaGameOver").style.display = "none";
     document.getElementById("telaInicial").style.display = "block";
     document.getElementById("score").style.display = "none";
-    
     document.getElementById("recordeText").innerText = "Recorde: " + recorde;
     
     renderer.setAnimationLoop(null);
@@ -456,19 +417,44 @@ function restartGame() {
     overhangs.length = 0;
 
     perfectStreak = 0;
-    sizeBonus = 0
 
     gameStarted = false; 
     moveDirection = 1;
     score = 0;
     document.getElementById("score").innerText = "Score: 0";
 
-   
     camera.position.set(4, 4, 4);
     camera.lookAt(0, 0, 0);
 
     addLayer(0, 0, originalBoxSize, originalBoxSize, "x", false);
-    addLayer(-10, 0, originalBoxSize, originalBoxSize, "x", true);
+    addLayer(-12, 0, originalBoxSize, originalBoxSize, "x", true);
 
     renderer.render(scene, camera);
 }
+
+document.getElementById("restartBtnNovo").addEventListener("click", (event) => {
+    event.stopPropagation();
+    restartGame();
+});
+
+window.addEventListener("resize", () => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const aspect = width / height;
+    
+    const baseWidth = 10; 
+    const frustumHeight = baseWidth / aspect;
+
+    camera.left = baseWidth / -2;
+    camera.right = baseWidth / 2;
+    camera.top = frustumHeight / 2;
+    camera.bottom = frustumHeight / -2;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    if (!gameStarted) {
+        renderer.render(scene, camera);
+    }
+});

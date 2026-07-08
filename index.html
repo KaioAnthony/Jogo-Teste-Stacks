@@ -1,104 +1,15 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Jogo Three.js</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: linear-gradient(to bottom, #99FCFF, #C9FEFF); height: 100vh; }
-
-        canvas { display: block; }
-
-        #telaInicial {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            font-family: 'Arial Black', Gadget, sans-serif;
-            z-index: 10;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 30px 50px;
-            border: 4px solid #111111;
-            border-radius: 20px;
-            box-shadow: 8px 8px 0px #111111;
-        }
-
-        .titulo-jogo {
-            font-size: 38px;
-            color: #ff6b6b;
-            margin: 0 0 10px 0;
-            -webkit-text-stroke: 2px #111111;
-        }
-
-        #recordeText {
-            font-size: 20px;
-            color: #4dadf7;
-            margin-bottom: 25px;
-            -webkit-text-stroke: 1px #111111;
-        }
-
-        #startBtn, #restartBtn {
-            padding: 12px 35px;
-            font-size: 22px;
-            font-family: 'Arial Black', sans-serif;
-            background-color: #ffd43b;
-            border: 3px solid #111111;
-            border-radius: 12px;
-            cursor: pointer;
-            box-shadow: 4px 4px 0px #111111;
-            transition: transform 0.1s;
-        }
-
-        #startBtn:active {
-            transform: translate(2px, 2px);
-            box-shadow: 2px 2px 0px #111111;
-        }
-
-        #score {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 32px;
-            font-family: 'Arial Black', sans-serif;
-            color: #ffffff;
-            -webkit-text-stroke: 2px #111111;
-            z-index: 5;
-        }
-        #restartBtn {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10; 
-        }
-        #perfectFlash {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1; 
-            pointer-events: none; 
-            opacity: 0;
-            transition: opacity 0.1s ease-out;
-        }
-
-
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stack Cartoon</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <script type="importmap">
-        {
-          "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
-          }
-        }
-      </script>
-      
-      <script type="module" src="main.js"></script>
-      
+    <div id="perfectFlash"></div>
 
-    <div id="perfectFlash"></div>  
+    <audio id="musicaFundo" src="musica.mp3" loop></audio>
 
     <div id="score" style="display: none;">Score: 0</div>
 
@@ -110,7 +21,31 @@
 
     <button id="restartBtn" style="display: none;">Jogar Novamente</button>
 
-    <audio id="musicaFundo" src="musica.mp3" loop></audio>
+    <div id="telaGameOver">
+    <div class="gameover-card">
+        <h1 class="gameover-title">FIM DE JOGO</h1>
+        <p id="subtituloGameOver" class="gameover-subtitle">Você errou o bloco!</p>
+        
+        <div class="score-box">
+            <div id="finalScore" class="score-box-final">Pontuação: 0</div>
+            <div id="finalRecorde" class="score-box-record">Recorde: 0</div>
+        </div>
 
+            <button id="restartBtnNovo">
+                JOGAR DE NOVO
+            </button>
+        </div>
+    </div>
+
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            }
+        }
+    </script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
