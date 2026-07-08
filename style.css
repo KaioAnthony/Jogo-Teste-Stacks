@@ -1,12 +1,12 @@
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #74b9ff; /* Cor de fundo cartoon para o céu */
+    background-color: #74b9ff;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Efeito de flash para acerto perfeito */
+
 #perfectFlash {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -16,7 +16,6 @@ body {
     transition: opacity 0.1s ease-out;
 }
 
-/* --- ESTILO BASE (Computadores) --- */
 #telaInicial {
     position: absolute;
     top: 50%;
@@ -85,7 +84,6 @@ body {
     z-index: 5;
 }
 
-/* Tela de Game Over (Container Principal) */
 #telaGameOver {
     display: none; 
     position: absolute; 
